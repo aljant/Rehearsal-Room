@@ -150,7 +150,7 @@
   <div id="view-review" class="view container">
     <div class="glass-card">
       <h2>稽古の振り返り</h2>
-      <p style="color: var(--text-secondary); margin-bottom: 2rem;">通しで再生して自分の録音を確認しましょう。</p>
+      <p style="color: var(--text-secondary); margin-bottom: 2rem;">通しで再生して録音を確認しましょう。（音声がない箇所はスキップされます）</p>
       <div id="review-list"></div>
       <div style="margin-top: 3rem; text-align: center; display: flex; justify-content: center; gap: 1rem;">
         <button class="btn btn-secondary" onclick="app.showView('setup')">配役設定へ戻る</button>
@@ -244,7 +244,8 @@
     const app = {
       state: {
         currentView: 'home', scripts:[], currentScript: null,
-        userRole: '', practiceInterval: 1.0, practiceIndex: 0, recordedBlobs: {}
+        userRole: '', practiceInterval: 1.0, practiceIndex: 0, recordedBlobs: {},
+        practiceActive: false, currentRecorder: null, currentStream: null, currentAudio: null
       },
 
       async init() {
@@ -298,7 +299,6 @@
         }
       },
 
-      // ★追加：テキストファイルの読み込み処理
       handleImportFile(input) {
         const file = input.files[0];
         if (!file) {
@@ -306,23 +306,17 @@
           return;
         }
         
-        // ファイル名を画面に表示
         document.getElementById('import-file-name').innerText = file.name;
-
-        // タイトルが空なら、ファイル名（.txtなどを除外したもの）を自動でセット
         const titleInput = document.getElementById('import-title');
         if (!titleInput.value) {
           titleInput.value = file.name.replace(/\.[^/.]+$/, "");
         }
 
-        // ファイルの中身を読み込んでテキストエリアにセット
         const reader = new FileReader();
         reader.onload = (e) => {
           document.getElementById('import-text').value = e.target.result;
         };
-        reader.readAsText(file); // 文字化けする場合はファイルの保存形式をUTF-8にしてください
-        
-        // 同じファイルを再度選べるようにリセットしておく
+        reader.readAsText(file); 
         input.value = '';
       },
 
@@ -436,16 +430,20 @@
         await db.saveScript(this.state.currentScript);
       },
 
+      // --- Practice Mode ---
       async startPractice() {
         this.state.userRole = document.getElementById('user-role-select').value;
         this.state.practiceInterval = parseFloat(document.getElementById('interval-sec').value) || 1.0;
         this.state.practiceIndex = 0;
         this.state.recordedBlobs = {};
+        this.state.practiceActive = true; // 練習開始フラグ
         this.showView('practice');
         this.nextPracticeStep();
       },
 
       async nextPracticeStep() {
+        if (!this.state.practiceActive) return; // 中断されていたら止まる
+
         if (this.state.practiceIndex >= this.state.currentScript.lines.length) {
           return this.finishPractice();
         }
@@ -470,59 +468,98 @@
           nextBtn.innerText = '開始して読む (録音開始)';
           controls.appendChild(nextBtn);
 
-          let recorder, stream;
-
           nextBtn.onclick = () => {
             if (nextBtn.innerText.includes('読み終わりました')) {
-              if (recorder) recorder.stop();
+              if (this.state.currentRecorder) this.state.currentRecorder.stop();
               return;
             }
 
             navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-              stream = s;
-              recorder = new MediaRecorder(stream);
+              this.state.currentStream = s;
+              this.state.currentRecorder = new MediaRecorder(s);
               let chunks =[];
-              recorder.ondataavailable = e => chunks.push(e.data);
-              recorder.onstop = () => {
+              this.state.currentRecorder.ondataavailable = e => chunks.push(e.data);
+              this.state.currentRecorder.onstop = () => {
                 this.state.recordedBlobs[idx] = new Blob(chunks, { type: 'audio/webm' });
-                stream.getTracks().forEach(t => t.stop());
+                this.state.currentStream.getTracks().forEach(t => t.stop());
+                
+                if (!this.state.practiceActive) return; // 中断された場合は次へ進まない
+
                 this.state.practiceIndex++;
-                setTimeout(() => this.nextPracticeStep(), this.state.practiceInterval * 1000);
+                setTimeout(() => {
+                  if (this.state.practiceActive) this.nextPracticeStep();
+                }, this.state.practiceInterval * 1000);
               };
-              recorder.start();
+              this.state.currentRecorder.start();
               nextBtn.innerText = '読み終わりました (次へ)';
               nextBtn.style.backgroundColor = '#28A745';
             }).catch(e => {
               alert('マイクが使えません。スキップします。');
               this.state.practiceIndex++;
-              this.nextPracticeStep();
+              if (this.state.practiceActive) this.nextPracticeStep();
             });
           };
         } else {
           if (line.audioUrl) {
             const audio = new Audio(line.audioUrl);
+            this.state.currentAudio = audio; // 停止操作のために保持
             audio.onended = () => {
+              if (!this.state.practiceActive) return;
               this.state.practiceIndex++;
-              setTimeout(() => this.nextPracticeStep(), this.state.practiceInterval * 1000);
+              setTimeout(() => {
+                if (this.state.practiceActive) this.nextPracticeStep();
+              }, this.state.practiceInterval * 1000);
             };
-            audio.play().catch(() => { this.state.practiceIndex++; this.nextPracticeStep(); });
+            audio.play().catch(() => { 
+              if (!this.state.practiceActive) return;
+              this.state.practiceIndex++; 
+              this.nextPracticeStep(); 
+            });
           } else {
             const waitTime = Math.max(1000, this.state.practiceInterval * 2000);
-            setTimeout(() => { this.state.practiceIndex++; this.nextPracticeStep(); }, waitTime);
+            setTimeout(() => { 
+              if (!this.state.practiceActive) return;
+              this.state.practiceIndex++; 
+              this.nextPracticeStep(); 
+            }, waitTime);
           }
         }
       },
 
       finishPractice() {
+        this.state.practiceActive = false;
         alert('稽古が完了しました！');
         this.renderReview();
         this.showView('review');
       },
 
+      // ★追加：練習を途中で中断する処理
       stopPractice() {
-        if (confirm('練習を中止しますか？')) this.showView('setup');
+        // 確認ダイアログ（キャンセルを押すとそのまま練習を続行）
+        if (confirm('練習を中断して、ここまでの録音を振り返りますか？\n（キャンセルを押すと練習を続けます）')) {
+          this.state.practiceActive = false; // 練習の自動進行をストップ
+          
+          let waitTime = 0;
+          
+          // もし自分のターンで録音中だったら、録音を止める（これにより保存処理が走る）
+          if (this.state.currentRecorder && this.state.currentRecorder.state === 'recording') {
+            this.state.currentRecorder.stop();
+            waitTime = 300; // 保存処理が完了するまで一瞬待つ
+          }
+          // もし相手のターンで音声再生中だったら、音を止める
+          if (this.state.currentAudio) {
+            this.state.currentAudio.pause();
+          }
+
+          // ここまでのデータを持って振り返り画面へ移動
+          setTimeout(() => {
+            this.renderReview();
+            this.showView('review');
+          }, waitTime);
+        }
       },
 
+      // --- Review Mode ---
       renderReview() {
         const container = document.getElementById('review-list');
         container.innerHTML = '';

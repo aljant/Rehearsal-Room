@@ -49,9 +49,17 @@
     .progress-bar { width: 100%; height: 6px; background: #DEE2E6; border-radius: 3px; margin-bottom: 2rem; overflow: hidden; }
     .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
     .badge-user { background: #FFF3CD; color: #856404; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+    
+    /* 追加: 録音中点滅バッジ */
+    .recording-badge {
+      background: #FFEBEB; color: #DC3545; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.9rem; font-weight: 700;
+      animation: blink 1s infinite; display: inline-block;
+    }
+
     .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes blink { 50% { opacity: 0.5; } }
   </style>
 </head>
 <body>
@@ -89,7 +97,6 @@
         形式は「役名: セリフ」としてください。
       </p>
 
-      <!-- テキストファイル読み込みUI -->
       <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 12px;">
         <span style="font-weight: 600; font-size: 0.95rem;">📄 ファイルから読み込む:</span>
         <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="document.getElementById('import-file').click()">ファイルを選択</button>
@@ -112,7 +119,7 @@
       <div style="margin-bottom: 2rem; border-bottom: 2px solid #EEE; padding-bottom: 2rem;">
         <h3>自分の役を選択</h3>
         <select id="user-role-select"></select>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">※ 相手のセリフの音声は下のリストからアップロードまたは録音できます。</p>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px;">※ 相手のセリフの音声は下のリストからアップロードまたは録音できます。</p>
         <div style="margin-top: 1rem;">
           <label>セリフ間の待機時間 (秒):</label>
           <input type="number" id="interval-sec" value="1.0" step="0.1" style="width: 100px; margin-bottom: 0;">
@@ -160,23 +167,18 @@
   </div>
 
   <script>
-    // --- セキュリティ: XSS対策のためのエスケープ関数 ---
+    // --- セキュリティ: XSS対策 ---
     function escapeHTML(str) {
       if (!str) return '';
       return str.replace(/[&<>'"]/g, function(match) {
-        const escapeMap = {
-          '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-        };
+        const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
         return escapeMap[match];
       });
     }
 
-    // --- 1. IndexedDB Wrapper (ローカルデータベース) ---
+    // --- 1. IndexedDB Wrapper ---
     const db = {
-      dbName: 'RehearsalRoomDB',
-      version: 1,
-      instance: null,
-      
+      dbName: 'RehearsalRoomDB', version: 1, instance: null,
       init() {
         return new Promise((resolve, reject) => {
           const req = indexedDB.open(this.dbName, this.version);
@@ -228,6 +230,13 @@
         return new Promise((resolve, reject) => {
           const req = this.instance.transaction('audios', 'readonly').objectStore('audios').get(id);
           req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+          req.onerror = () => reject(req.error);
+        });
+      },
+      deleteAudio(id) {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('audios', 'readwrite').objectStore('audios').delete(id);
+          req.onsuccess = () => resolve();
           req.onerror = () => reject(req.error);
         });
       }
@@ -305,17 +314,12 @@
           document.getElementById('import-file-name').innerText = '選択されていません';
           return;
         }
-        
         document.getElementById('import-file-name').innerText = file.name;
         const titleInput = document.getElementById('import-title');
-        if (!titleInput.value) {
-          titleInput.value = file.name.replace(/\.[^/.]+$/, "");
-        }
+        if (!titleInput.value) titleInput.value = file.name.replace(/\.[^/.]+$/, "");
 
         const reader = new FileReader();
-        reader.onload = (e) => {
-          document.getElementById('import-text').value = e.target.result;
-        };
+        reader.onload = (e) => { document.getElementById('import-text').value = e.target.result; };
         reader.readAsText(file); 
         input.value = '';
       },
@@ -323,7 +327,6 @@
       async importScript() {
         const title = document.getElementById('import-title').value;
         const text = document.getElementById('import-text').value;
-
         if (!title || !text) return alert('タイトルとテキストを入力（またはファイルを読み込み）してください。');
 
         const lines = text.split('\n').filter(l => l.trim()).map((line) => {
@@ -369,7 +372,42 @@
         document.getElementById('setup-title').innerText = script.title;
         const sel = document.getElementById('user-role-select');
         sel.innerHTML = script.roles.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
+
+        // ★追加：役を変更した時の関連音声削除確認
+        sel.onchange = async (e) => {
+          const newRole = e.target.value;
+          const linesToClear = this.state.currentScript.lines.filter(l => l.role === newRole && l.audioId);
+          
+          if (linesToClear.length > 0) {
+            if (confirm(`「${escapeHTML(newRole)}」を自分の役に設定しました。\nこの役に設定されている事前音声（${linesToClear.length}件）は練習で再生されなくなるため、削除して容量を節約しますか？`)) {
+              this.setLoading(true);
+              for (const line of linesToClear) {
+                if (line.audioId) {
+                  await db.deleteAudio(line.audioId);
+                  line.audioId = null;
+                  line.audioUrl = null;
+                }
+              }
+              await db.saveScript(this.state.currentScript);
+              this.setLoading(false);
+              this.renderLineListSetup();
+            }
+          }
+        };
+
         this.renderLineListSetup();
+      },
+
+      // ★追加：個別の音声削除処理
+      async deleteLineAudio(idx) {
+        if (confirm('このセリフの事前音声を削除しますか？')) {
+          const audioId = this.state.currentScript.lines[idx].audioId;
+          if (audioId) await db.deleteAudio(audioId);
+          this.state.currentScript.lines[idx].audioId = null;
+          this.state.currentScript.lines[idx].audioUrl = null;
+          await db.saveScript(this.state.currentScript);
+          this.renderLineListSetup();
+        }
       },
 
       renderLineListSetup() {
@@ -382,8 +420,11 @@
             <div class="line-role">${escapeHTML(l.role)}</div>
             <div class="line-text">${escapeHTML(l.text)}</div>
             <div class="line-actions" id="actions-${idx}">
-              ${l.audioUrl ? '<span style="color: #28A745; font-size: 0.8rem; font-weight:bold;">♪ 音声あり</span>' : ''}
-              <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="app.recordLineSetup(${idx})">録音</button>
+              ${l.audioUrl ? `
+                <span style="color: #28A745; font-size: 0.8rem; font-weight:bold;">♪ 音声あり</span>
+                <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; color: #DC3545; border-color: #DC3545;" onclick="app.deleteLineAudio(${idx})">削除</button>
+              ` : ''}
+              <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="app.recordLineSetup(${idx})">${l.audioUrl ? '再録音' : '録音'}</button>
               <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="document.getElementById('upload-${idx}').click()">アップロード</button>
               <input type="file" id="upload-${idx}" style="display:none" accept="audio/*" onchange="app.uploadLineSetup(${idx}, this)">
             </div>
@@ -436,13 +477,13 @@
         this.state.practiceInterval = parseFloat(document.getElementById('interval-sec').value) || 1.0;
         this.state.practiceIndex = 0;
         this.state.recordedBlobs = {};
-        this.state.practiceActive = true; // 練習開始フラグ
+        this.state.practiceActive = true; 
         this.showView('practice');
         this.nextPracticeStep();
       },
 
       async nextPracticeStep() {
-        if (!this.state.practiceActive) return; // 中断されていたら止まる
+        if (!this.state.practiceActive) return;
 
         if (this.state.practiceIndex >= this.state.currentScript.lines.length) {
           return this.finishPractice();
@@ -453,11 +494,11 @@
         const isMyTurn = (line.role === this.state.userRole);
 
         document.getElementById('practice-progress').style.width = ((idx / this.state.currentScript.lines.length) * 100) + '%';
-        
         document.getElementById('practice-role-name').innerText = line.role;
         document.getElementById('practice-line-text').innerText = line.text;
         
-        document.getElementById('practice-status-badge').innerHTML = isMyTurn ? '<span class="badge-user">あなたの番です</span>' : '<span style="color:var(--text-secondary)">音声待機・再生中...</span>';
+        // ★変更：自分のターンの時は録音中の点滅バッジを表示
+        document.getElementById('practice-status-badge').innerHTML = isMyTurn ? '<span class="recording-badge">🔴 録音中... あなたの番です</span>' : '<span style="color:var(--text-secondary)">音声待機・再生中...</span>';
         
         const controls = document.getElementById('practice-controls');
         controls.innerHTML = '';
@@ -465,44 +506,49 @@
         if (isMyTurn) {
           const nextBtn = document.createElement('button');
           nextBtn.className = 'btn btn-primary';
-          nextBtn.innerText = '開始して読む (録音開始)';
+          nextBtn.style.backgroundColor = '#28A745';
+          nextBtn.innerText = '🎙️ マイク準備中...';
+          nextBtn.disabled = true; // マイクが起動するまでは押せない
           controls.appendChild(nextBtn);
 
-          nextBtn.onclick = () => {
-            if (nextBtn.innerText.includes('読み終わりました')) {
-              if (this.state.currentRecorder) this.state.currentRecorder.stop();
-              return;
-            }
+          // ★変更：自動でマイクを取得して即座に録音を開始する
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+            this.state.currentStream = s;
+            this.state.currentRecorder = new MediaRecorder(s);
+            let chunks =[];
+            this.state.currentRecorder.ondataavailable = e => chunks.push(e.data);
+            this.state.currentRecorder.onstop = () => {
+              this.state.recordedBlobs[idx] = new Blob(chunks, { type: 'audio/webm' });
+              this.state.currentStream.getTracks().forEach(t => t.stop());
+              
+              if (!this.state.practiceActive) return;
 
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-              this.state.currentStream = s;
-              this.state.currentRecorder = new MediaRecorder(s);
-              let chunks =[];
-              this.state.currentRecorder.ondataavailable = e => chunks.push(e.data);
-              this.state.currentRecorder.onstop = () => {
-                this.state.recordedBlobs[idx] = new Blob(chunks, { type: 'audio/webm' });
-                this.state.currentStream.getTracks().forEach(t => t.stop());
-                
-                if (!this.state.practiceActive) return; // 中断された場合は次へ進まない
-
-                this.state.practiceIndex++;
-                setTimeout(() => {
-                  if (this.state.practiceActive) this.nextPracticeStep();
-                }, this.state.practiceInterval * 1000);
-              };
-              this.state.currentRecorder.start();
-              nextBtn.innerText = '読み終わりました (次へ)';
-              nextBtn.style.backgroundColor = '#28A745';
-            }).catch(e => {
-              alert('マイクが使えません。スキップします。');
               this.state.practiceIndex++;
-              if (this.state.practiceActive) this.nextPracticeStep();
-            });
-          };
+              setTimeout(() => {
+                if (this.state.practiceActive) this.nextPracticeStep();
+              }, this.state.practiceInterval * 1000);
+            };
+            
+            // 自動で録音開始
+            this.state.currentRecorder.start();
+            nextBtn.innerText = '読み終わりました (次へ進む)';
+            nextBtn.disabled = false;
+            
+            // ユーザーは読み終わったらボタンを押すだけ
+            nextBtn.onclick = () => {
+              if (this.state.currentRecorder && this.state.currentRecorder.state !== 'inactive') {
+                this.state.currentRecorder.stop();
+              }
+            };
+          }).catch(e => {
+            alert('マイクが使えません。スキップします。');
+            this.state.practiceIndex++;
+            if (this.state.practiceActive) this.nextPracticeStep();
+          });
         } else {
           if (line.audioUrl) {
             const audio = new Audio(line.audioUrl);
-            this.state.currentAudio = audio; // 停止操作のために保持
+            this.state.currentAudio = audio;
             audio.onended = () => {
               if (!this.state.practiceActive) return;
               this.state.practiceIndex++;
@@ -533,25 +579,19 @@
         this.showView('review');
       },
 
-      // ★追加：練習を途中で中断する処理
       stopPractice() {
-        // 確認ダイアログ（キャンセルを押すとそのまま練習を続行）
         if (confirm('練習を中断して、ここまでの録音を振り返りますか？\n（キャンセルを押すと練習を続けます）')) {
-          this.state.practiceActive = false; // 練習の自動進行をストップ
-          
+          this.state.practiceActive = false; 
           let waitTime = 0;
           
-          // もし自分のターンで録音中だったら、録音を止める（これにより保存処理が走る）
           if (this.state.currentRecorder && this.state.currentRecorder.state === 'recording') {
             this.state.currentRecorder.stop();
-            waitTime = 300; // 保存処理が完了するまで一瞬待つ
+            waitTime = 300; 
           }
-          // もし相手のターンで音声再生中だったら、音を止める
           if (this.state.currentAudio) {
             this.state.currentAudio.pause();
           }
 
-          // ここまでのデータを持って振り返り画面へ移動
           setTimeout(() => {
             this.renderReview();
             this.showView('review');
@@ -559,7 +599,6 @@
         }
       },
 
-      // --- Review Mode ---
       renderReview() {
         const container = document.getElementById('review-list');
         container.innerHTML = '';

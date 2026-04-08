@@ -23,43 +23,67 @@
     body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background: var(--bg-gradient); color: var(--text-main); line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
     .container { max-width: 1000px; margin: 0 auto; padding: 2rem; width: 100%; }
     .glass-card { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); box-shadow: var(--glass-shadow); border-radius: var(--radius); padding: 2.5rem; margin-bottom: 2rem; transition: var(--transition); }
-    .btn { padding: 0.8rem 1.8rem; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: var(--transition); font-size: 1rem; }
+    .btn { padding: 0.8rem 1.8rem; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: var(--transition); font-size: 1rem; }
     .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3); }
     .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4); }
     .btn-secondary { background: white; color: var(--text-main); border: 1px solid #DEE2E6; }
     .btn-secondary:hover { background: #F8F9FA; }
     h1, h2, h3 { font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
-    input, textarea, select { width: 100%; padding: 1rem; border-radius: 12px; border: 1px solid #DEE2E6; background: rgba(255, 255, 255, 0.9); font-size: 1rem; margin-bottom: 1.5rem; outline: none; transition: var(--transition); }
+    input[type="text"], input[type="number"], textarea, select { width: 100%; padding: 1rem; border-radius: 12px; border: 1px solid #DEE2E6; background: rgba(255, 255, 255, 0.9); font-size: 1rem; margin-bottom: 1.5rem; outline: none; transition: var(--transition); box-sizing: border-box; }
     input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1); }
     .view { display: none; animation: fadeIn 0.5s ease; }
     .view.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    #view-home header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+    
+    #view-home header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; flex-wrap: wrap; gap: 1rem; }
     .script-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
     .script-card { cursor: pointer; padding: 2rem; position: relative; }
     .script-card:hover { transform: scale(1.02); }
     .delete-btn { position: absolute; top: 15px; right: 15px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: none; }
     .script-card:hover .delete-btn { display: flex; justify-content: center; align-items: center; }
+    
+    /* 役の複数選択用ボタンスタイル */
+    .role-checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 0.5rem; }
+    .role-label { display: flex; align-items: center; padding: 10px 15px; background: white; border: 2px solid #DEE2E6; border-radius: 8px; cursor: pointer; transition: var(--transition); user-select: none; font-weight: 600; }
+    .role-label input[type="checkbox"] { margin-right: 8px; width: 20px; height: 20px; margin-bottom: 0; cursor: pointer; }
+    .role-label.selected { background: rgba(255, 107, 53, 0.08); color: var(--primary); border-color: var(--primary); }
+
     .line-item { display: flex; gap: 1.5rem; padding: 1.5rem; border-bottom: 1px solid #EEE; align-items: center; }
     .line-role { font-weight: 700; min-width: 120px; color: var(--primary); }
     .line-text { flex: 1; }
     .line-actions { display: flex; gap: 0.5rem; align-items: center; }
-    #practice-container { text-align: center; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    
+    #practice-container { text-align: center; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1rem; }
     .current-line { font-size: 1.8rem; font-weight: 600; margin: 2rem 0; max-width: 800px; }
     .progress-bar { width: 100%; height: 6px; background: #DEE2E6; border-radius: 3px; margin-bottom: 2rem; overflow: hidden; }
     .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
     .badge-user { background: #FFF3CD; color: #856404; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
-    
-    /* 追加: 録音中点滅バッジ */
-    .recording-badge {
-      background: #FFEBEB; color: #DC3545; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.9rem; font-weight: 700;
-      animation: blink 1s infinite; display: inline-block;
-    }
+    .recording-badge { background: #FFEBEB; color: #DC3545; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.9rem; font-weight: 700; animation: blink 1s infinite; display: inline-block; }
 
     .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes blink { 50% { opacity: 0.5; } }
+
+    /* ===== スマホ用レスポンシブ対応 ===== */
+    @media (max-width: 768px) {
+      .container { padding: 1rem; }
+      .glass-card { padding: 1.2rem; margin-bottom: 1rem; }
+      
+      /* セリフ一覧のリストを縦並びに */
+      .line-item { flex-direction: column; align-items: flex-start; gap: 0.8rem; padding: 1rem 0; }
+      .line-role { min-width: auto; background: #F8F9FA; padding: 4px 12px; border-radius: 6px; font-size: 0.9rem; display: inline-block; }
+      
+      /* アクションボタンを押しやすく幅広に */
+      .line-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+      .line-actions button { flex: 1; padding: 0.7rem 0.5rem; font-size: 0.85rem; }
+      
+      .script-grid { grid-template-columns: 1fr; }
+      .current-line { font-size: 1.4rem; }
+      .start-practice-btn { width: 100%; box-sizing: border-box; }
+      .delete-btn { display: flex; justify-content: center; align-items: center; } /* スマホでは削除ボタンを常に表示 */
+    }
   </style>
 </head>
 <body>
@@ -97,8 +121,8 @@
         形式は「役名: セリフ」としてください。
       </p>
 
-      <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 12px;">
-        <span style="font-weight: 600; font-size: 0.95rem;">📄 ファイルから読み込む:</span>
+      <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 12px; flex-wrap: wrap;">
+        <span style="font-weight: 600; font-size: 0.95rem;">📄 ファイルから読込:</span>
         <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="document.getElementById('import-file').click()">ファイルを選択</button>
         <input type="file" id="import-file" style="display:none" accept=".txt" onchange="app.handleImportFile(this)">
         <span id="import-file-name" style="font-size: 0.85rem; color: var(--text-secondary);">選択されていません</span>
@@ -106,7 +130,7 @@
 
       <input type="text" id="import-title" placeholder="台本のタイトル (例: ハムレット 第一幕)">
       <textarea id="import-text" rows="15" placeholder="役名A: セリフ内容...&#10;役名B: セリフ内容..."></textarea>
-      <button class="btn btn-primary" onclick="app.importScript()">保存する</button>
+      <button class="btn btn-primary start-practice-btn" onclick="app.importScript()">保存する</button>
     </div>
   </div>
 
@@ -117,12 +141,16 @@
       <h2 id="setup-title">台本タイトル</h2>
       
       <div style="margin-bottom: 2rem; border-bottom: 2px solid #EEE; padding-bottom: 2rem;">
-        <h3>自分の役を選択</h3>
-        <select id="user-role-select"></select>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px;">※ 相手のセリフの音声は下のリストからアップロードまたは録音できます。</p>
-        <div style="margin-top: 1rem;">
-          <label>セリフ間の待機時間 (秒):</label>
-          <input type="number" id="interval-sec" value="1.0" step="0.1" style="width: 100px; margin-bottom: 0;">
+        <h3>自分の役を選択 <small style="font-weight: normal; font-size: 0.8em;">(複数可)</small></h3>
+        
+        <!-- 複数選択用コンテナ -->
+        <div id="user-role-container" class="role-checkbox-group"></div>
+        
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 10px;">※ 自分が選んだ役「以外」のセリフに対して、下のリストから音声をセットできます。</p>
+        
+        <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <label style="font-weight: 600;">セリフ間の待機時間 (秒):</label>
+          <input type="number" id="interval-sec" value="1.0" step="0.1" style="width: 120px; margin-bottom: 0;">
         </div>
       </div>
 
@@ -130,7 +158,7 @@
       <div id="line-list-setup"></div>
 
       <div style="margin-top: 3rem; text-align: center;">
-        <button class="btn btn-primary" style="padding: 1.2rem 3rem; font-size: 1.2rem;" onclick="app.startPractice()">
+        <button class="btn btn-primary start-practice-btn" style="padding: 1.2rem 3rem; font-size: 1.2rem;" onclick="app.startPractice()">
           練習を始める →
         </button>
       </div>
@@ -145,7 +173,7 @@
         <div id="practice-status-badge"></div>
         <div id="practice-role-name" style="font-weight: 700; color: var(--primary);"></div>
         <div class="current-line" id="practice-line-text">ここにセリフが表示されます</div>
-        <div id="practice-controls" style="margin-top: 2rem;"></div>
+        <div id="practice-controls" style="margin-top: 2rem; width: 100%;"></div>
       </div>
       <div style="text-align: center; margin-top: 2rem;">
         <button class="btn btn-secondary" onclick="app.stopPractice()">練習を終了する</button>
@@ -159,15 +187,14 @@
       <h2>稽古の振り返り</h2>
       <p style="color: var(--text-secondary); margin-bottom: 2rem;">通しで再生して録音を確認しましょう。（音声がない箇所はスキップされます）</p>
       <div id="review-list"></div>
-      <div style="margin-top: 3rem; text-align: center; display: flex; justify-content: center; gap: 1rem;">
+      <div style="margin-top: 3rem; text-align: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
         <button class="btn btn-secondary" onclick="app.showView('setup')">配役設定へ戻る</button>
-        <button class="btn btn-primary" onclick="app.startReviewPlayback()">通しで再生</button>
+        <button class="btn btn-primary start-practice-btn" onclick="app.startReviewPlayback()">通しで再生</button>
       </div>
     </div>
   </div>
 
   <script>
-    // --- セキュリティ: XSS対策 ---
     function escapeHTML(str) {
       if (!str) return '';
       return str.replace(/[&<>'"]/g, function(match) {
@@ -176,7 +203,6 @@
       });
     }
 
-    // --- 1. IndexedDB Wrapper ---
     const db = {
       dbName: 'RehearsalRoomDB', version: 1, instance: null,
       init() {
@@ -249,11 +275,11 @@
       });
     }
 
-    // --- 2. Application Logic ---
     const app = {
       state: {
         currentView: 'home', scripts:[], currentScript: null,
-        userRole: '', practiceInterval: 1.0, practiceIndex: 0, recordedBlobs: {},
+        userRoles:[], // 複数役対応
+        practiceInterval: 1.0, practiceIndex: 0, recordedBlobs: {},
         practiceActive: false, currentRecorder: null, currentStream: null, currentAudio: null
       },
 
@@ -285,12 +311,10 @@
           const card = document.createElement('div');
           card.className = 'glass-card script-card';
           card.onclick = (e) => { if(!e.target.closest('.delete-btn')) this.openScript(s.id); };
-          
           card.innerHTML = `
             <button class="delete-btn" onclick="app.deleteScript('${s.id}')">×</button>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary); margin-bottom: 1rem;">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>
             </svg>
             <h3>${escapeHTML(s.title)}</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">
@@ -353,15 +377,14 @@
       async openScript(id) {
         this.setLoading(true);
         const script = await db.getScript(id);
-        
         for (let i = 0; i < script.lines.length; i++) {
           if (script.lines[i].audioId) {
             const blob = await db.getAudioBlob(script.lines[i].audioId);
             if (blob) script.lines[i].audioUrl = URL.createObjectURL(blob);
           }
         }
-        
         this.state.currentScript = script;
+        this.state.userRoles =[]; // 初期化
         this.setLoading(false);
         this.renderSetup();
         this.showView('setup');
@@ -370,16 +393,52 @@
       renderSetup() {
         const script = this.state.currentScript;
         document.getElementById('setup-title').innerText = script.title;
-        const sel = document.getElementById('user-role-select');
-        sel.innerHTML = script.roles.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
-
-        // ★追加：役を変更した時の関連音声削除確認
-        sel.onchange = async (e) => {
-          const newRole = e.target.value;
-          const linesToClear = this.state.currentScript.lines.filter(l => l.role === newRole && l.audioId);
+        
+        const roleContainer = document.getElementById('user-role-container');
+        roleContainer.innerHTML = '';
+        
+        // 役一覧からチェックボックスを生成
+        script.roles.forEach(r => {
+          const label = document.createElement('label');
+          label.className = 'role-label';
+          if (this.state.userRoles.includes(r)) label.classList.add('selected');
           
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = r;
+          if (this.state.userRoles.includes(r)) checkbox.checked = true;
+          
+          checkbox.onchange = async (e) => {
+            if (e.target.checked) label.classList.add('selected');
+            else label.classList.remove('selected');
+            await this.updateUserRoles();
+          };
+          
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(escapeHTML(r)));
+          roleContainer.appendChild(label);
+        });
+
+        this.renderLineListSetup();
+      },
+
+      // 複数役選択時の音声削除確認ロジック
+      async updateUserRoles() {
+        const checkboxes = document.querySelectorAll('#user-role-container input[type="checkbox"]:checked');
+        const newRoles = Array.from(checkboxes).map(cb => cb.value);
+        
+        // 新しく追加された役を抽出
+        const addedRoles = newRoles.filter(r => !this.state.userRoles.includes(r));
+        this.state.userRoles = newRoles;
+
+        if (addedRoles.length > 0) {
+          let linesToClear =[];
+          addedRoles.forEach(role => {
+            linesToClear = linesToClear.concat(this.state.currentScript.lines.filter(l => l.role === role && l.audioId));
+          });
+
           if (linesToClear.length > 0) {
-            if (confirm(`「${escapeHTML(newRole)}」を自分の役に設定しました。\nこの役に設定されている事前音声（${linesToClear.length}件）は練習で再生されなくなるため、削除して容量を節約しますか？`)) {
+            if (confirm(`新しく自分の役に設定したセリフに、事前音声が${linesToClear.length}件セットされています。\n練習で再生されなくなるため、削除して容量を節約しますか？`)) {
               this.setLoading(true);
               for (const line of linesToClear) {
                 if (line.audioId) {
@@ -393,12 +452,9 @@
               this.renderLineListSetup();
             }
           }
-        };
-
-        this.renderLineListSetup();
+        }
       },
 
-      // ★追加：個別の音声削除処理
       async deleteLineAudio(idx) {
         if (confirm('このセリフの事前音声を削除しますか？')) {
           const audioId = this.state.currentScript.lines[idx].audioId;
@@ -422,10 +478,10 @@
             <div class="line-actions" id="actions-${idx}">
               ${l.audioUrl ? `
                 <span style="color: #28A745; font-size: 0.8rem; font-weight:bold;">♪ 音声あり</span>
-                <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; color: #DC3545; border-color: #DC3545;" onclick="app.deleteLineAudio(${idx})">削除</button>
+                <button class="btn btn-secondary" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; color: #DC3545; border-color: #DC3545;" onclick="app.deleteLineAudio(${idx})">削除</button>
               ` : ''}
-              <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="app.recordLineSetup(${idx})">${l.audioUrl ? '再録音' : '録音'}</button>
-              <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="document.getElementById('upload-${idx}').click()">アップロード</button>
+              <button class="btn btn-secondary" onclick="app.recordLineSetup(${idx})">${l.audioUrl ? '再録音' : '録音'}</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('upload-${idx}').click()">UP</button>
               <input type="file" id="upload-${idx}" style="display:none" accept="audio/*" onchange="app.uploadLineSetup(${idx}, this)">
             </div>
           `;
@@ -435,7 +491,7 @@
 
       recordLineSetup(idx) {
         navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-          const btn = document.querySelector(`#actions-${idx} button`);
+          const btn = document.querySelector(`#actions-${idx} button:nth-of-type(${document.querySelector(`#actions-${idx} button`).innerText === '削除' ? 2 : 1})`);
           const recorder = new MediaRecorder(stream);
           let chunks =[];
           
@@ -449,7 +505,7 @@
             this.renderLineListSetup();
           };
           
-          btn.innerText = '停止 (録音中)';
+          btn.innerText = '停止(録音中)';
           btn.classList.add('btn-primary');
           btn.onclick = () => recorder.stop();
           recorder.start();
@@ -473,7 +529,13 @@
 
       // --- Practice Mode ---
       async startPractice() {
-        this.state.userRole = document.getElementById('user-role-select').value;
+        const checkboxes = document.querySelectorAll('#user-role-container input[type="checkbox"]:checked');
+        this.state.userRoles = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (this.state.userRoles.length === 0) {
+          if (!confirm('自分の役が1つも選択されていません。全て自動再生になりますがよろしいですか？')) return;
+        }
+
         this.state.practiceInterval = parseFloat(document.getElementById('interval-sec').value) || 1.0;
         this.state.practiceIndex = 0;
         this.state.recordedBlobs = {};
@@ -491,13 +553,14 @@
 
         const idx = this.state.practiceIndex;
         const line = this.state.currentScript.lines[idx];
-        const isMyTurn = (line.role === this.state.userRole);
+        
+        // ★変更：自分の役（複数）に当てはまるか判定
+        const isMyTurn = this.state.userRoles.includes(line.role);
 
         document.getElementById('practice-progress').style.width = ((idx / this.state.currentScript.lines.length) * 100) + '%';
         document.getElementById('practice-role-name').innerText = line.role;
         document.getElementById('practice-line-text').innerText = line.text;
         
-        // ★変更：自分のターンの時は録音中の点滅バッジを表示
         document.getElementById('practice-status-badge').innerHTML = isMyTurn ? '<span class="recording-badge">🔴 録音中... あなたの番です</span>' : '<span style="color:var(--text-secondary)">音声待機・再生中...</span>';
         
         const controls = document.getElementById('practice-controls');
@@ -505,13 +568,12 @@
 
         if (isMyTurn) {
           const nextBtn = document.createElement('button');
-          nextBtn.className = 'btn btn-primary';
+          nextBtn.className = 'btn btn-primary start-practice-btn';
           nextBtn.style.backgroundColor = '#28A745';
           nextBtn.innerText = '🎙️ マイク準備中...';
-          nextBtn.disabled = true; // マイクが起動するまでは押せない
+          nextBtn.disabled = true; 
           controls.appendChild(nextBtn);
 
-          // ★変更：自動でマイクを取得して即座に録音を開始する
           navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
             this.state.currentStream = s;
             this.state.currentRecorder = new MediaRecorder(s);
@@ -529,12 +591,10 @@
               }, this.state.practiceInterval * 1000);
             };
             
-            // 自動で録音開始
             this.state.currentRecorder.start();
             nextBtn.innerText = '読み終わりました (次へ進む)';
             nextBtn.disabled = false;
             
-            // ユーザーは読み終わったらボタンを押すだけ
             nextBtn.onclick = () => {
               if (this.state.currentRecorder && this.state.currentRecorder.state !== 'inactive') {
                 this.state.currentRecorder.stop();
@@ -603,7 +663,8 @@
         const container = document.getElementById('review-list');
         container.innerHTML = '';
         this.state.currentScript.lines.forEach((l, idx) => {
-          const isMe = (l.role === this.state.userRole);
+          // ★変更：自分の役の判定
+          const isMe = this.state.userRoles.includes(l.role);
           const hasRecord = isMe ? this.state.recordedBlobs[idx] : l.audioUrl;
           
           const div = document.createElement('div');
@@ -621,7 +682,7 @@
       },
 
       playReviewLine(idx) {
-        const isMe = (this.state.currentScript.lines[idx].role === this.state.userRole);
+        const isMe = this.state.userRoles.includes(this.state.currentScript.lines[idx].role);
         let audio;
         if (isMe) {
           const blob = this.state.recordedBlobs[idx];
@@ -638,7 +699,7 @@
       async startReviewPlayback() {
         for (let i = 0; i < this.state.currentScript.lines.length; i++) {
           await new Promise(resolve => {
-            const isMe = (this.state.currentScript.lines[i].role === this.state.userRole);
+            const isMe = this.state.userRoles.includes(this.state.currentScript.lines[i].role);
             let audio;
             if (isMe) {
               const blob = this.state.recordedBlobs[i];

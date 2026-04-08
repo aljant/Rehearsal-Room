@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- セキュリティ: 検索エンジンへのインデックス登録を防ぐ -->
   <meta name="robots" content="noindex, nofollow">
-  <!-- セキュリティ: CSP (Content Security Policy) -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self' blob:;">
   
   <title>Rehearsal Room | 台本練習アプリ</title>
@@ -13,7 +11,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* （CSSは先ほどと全く同じため省略せずにそのまま入れます） */
     :root {
       --primary: #FF6B35; --primary-hover: #E85A2A;
       --bg-gradient: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
@@ -87,7 +84,19 @@
     <div class="glass-card">
       <button class="btn btn-secondary" onclick="app.showView('home')" style="margin-bottom: 2rem;">← 戻る</button>
       <h2>台本をインポート</h2>
-      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">「役名: セリフ」の形式で入力してください。</p>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+        テキストエリアに直接入力するか、テキストファイル（.txt）を読み込んでください。<br>
+        形式は「役名: セリフ」としてください。
+      </p>
+
+      <!-- テキストファイル読み込みUI -->
+      <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 12px;">
+        <span style="font-weight: 600; font-size: 0.95rem;">📄 ファイルから読み込む:</span>
+        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="document.getElementById('import-file').click()">ファイルを選択</button>
+        <input type="file" id="import-file" style="display:none" accept=".txt" onchange="app.handleImportFile(this)">
+        <span id="import-file-name" style="font-size: 0.85rem; color: var(--text-secondary);">選択されていません</span>
+      </div>
+
       <input type="text" id="import-title" placeholder="台本のタイトル (例: ハムレット 第一幕)">
       <textarea id="import-text" rows="15" placeholder="役名A: セリフ内容...&#10;役名B: セリフ内容..."></textarea>
       <button class="btn btn-primary" onclick="app.importScript()">保存する</button>
@@ -267,7 +276,6 @@
           card.className = 'glass-card script-card';
           card.onclick = (e) => { if(!e.target.closest('.delete-btn')) this.openScript(s.id); };
           
-          // XSS対策: 表示時にエスケープ
           card.innerHTML = `
             <button class="delete-btn" onclick="app.deleteScript('${s.id}')">×</button>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary); margin-bottom: 1rem;">
@@ -290,11 +298,39 @@
         }
       },
 
+      // ★追加：テキストファイルの読み込み処理
+      handleImportFile(input) {
+        const file = input.files[0];
+        if (!file) {
+          document.getElementById('import-file-name').innerText = '選択されていません';
+          return;
+        }
+        
+        // ファイル名を画面に表示
+        document.getElementById('import-file-name').innerText = file.name;
+
+        // タイトルが空なら、ファイル名（.txtなどを除外したもの）を自動でセット
+        const titleInput = document.getElementById('import-title');
+        if (!titleInput.value) {
+          titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+        }
+
+        // ファイルの中身を読み込んでテキストエリアにセット
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('import-text').value = e.target.result;
+        };
+        reader.readAsText(file); // 文字化けする場合はファイルの保存形式をUTF-8にしてください
+        
+        // 同じファイルを再度選べるようにリセットしておく
+        input.value = '';
+      },
+
       async importScript() {
         const title = document.getElementById('import-title').value;
         const text = document.getElementById('import-text').value;
 
-        if (!title || !text) return alert('タイトルとテキストを入力してください。');
+        if (!title || !text) return alert('タイトルとテキストを入力（またはファイルを読み込み）してください。');
 
         const lines = text.split('\n').filter(l => l.trim()).map((line) => {
           const match = line.match(/^([^:：]+)[:：](.*)$/);
@@ -311,6 +347,8 @@
 
         document.getElementById('import-title').value = '';
         document.getElementById('import-text').value = '';
+        document.getElementById('import-file-name').innerText = '選択されていません';
+        
         this.loadScripts();
         this.showView('home');
       },
@@ -334,8 +372,7 @@
 
       renderSetup() {
         const script = this.state.currentScript;
-        // XSS対策: 表示時にエスケープ
-        document.getElementById('setup-title').innerText = script.title; // innerTextは自動で安全になるが念の為
+        document.getElementById('setup-title').innerText = script.title;
         const sel = document.getElementById('user-role-select');
         sel.innerHTML = script.roles.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
         this.renderLineListSetup();
@@ -347,7 +384,6 @@
         this.state.currentScript.lines.forEach((l, idx) => {
           const div = document.createElement('div');
           div.className = 'line-item';
-          // XSS対策: roleとtextをエスケープ
           div.innerHTML = `
             <div class="line-role">${escapeHTML(l.role)}</div>
             <div class="line-text">${escapeHTML(l.text)}</div>
@@ -420,7 +456,6 @@
 
         document.getElementById('practice-progress').style.width = ((idx / this.state.currentScript.lines.length) * 100) + '%';
         
-        // innerTextを使っているのでエスケープ不要だが、念のため安全なプロパティ代入
         document.getElementById('practice-role-name').innerText = line.role;
         document.getElementById('practice-line-text').innerText = line.text;
         
@@ -498,7 +533,6 @@
           const div = document.createElement('div');
           div.className = 'line-item';
           div.style.background = isMe ? 'rgba(255, 107, 53, 0.05)' : 'transparent';
-          // XSS対策: roleとtextをエスケープ
           div.innerHTML = `
             <div class="line-role">${escapeHTML(l.role)} ${isMe ? '(自分)' : ''}</div>
             <div class="line-text">${escapeHTML(l.text)}</div>

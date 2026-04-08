@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- セキュリティ: 検索エンジンへのインデックス登録を防ぐ -->
+  <meta name="robots" content="noindex, nofollow">
+  <!-- セキュリティ: CSP (Content Security Policy) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self' blob:;">
+  
+  <title>Rehearsal Room | 台本練習アプリ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* （CSSは先ほどと全く同じため省略せずにそのまま入れます） */
+    :root {
+      --primary: #FF6B35; --primary-hover: #E85A2A;
+      --bg-gradient: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
+      --card-bg: rgba(255, 255, 255, 0.85); --card-border: rgba(255, 255, 255, 0.4);
+      --text-main: #212529; --text-secondary: #6C757D;
+      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+      --radius: 20px; --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background: var(--bg-gradient); color: var(--text-main); line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 2rem; width: 100%; }
+    .glass-card { background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); box-shadow: var(--glass-shadow); border-radius: var(--radius); padding: 2.5rem; margin-bottom: 2rem; transition: var(--transition); }
+    .btn { padding: 0.8rem 1.8rem; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: var(--transition); font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3); }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4); }
+    .btn-secondary { background: white; color: var(--text-main); border: 1px solid #DEE2E6; }
+    .btn-secondary:hover { background: #F8F9FA; }
+    h1, h2, h3 { font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+    input, textarea, select { width: 100%; padding: 1rem; border-radius: 12px; border: 1px solid #DEE2E6; background: rgba(255, 255, 255, 0.9); font-size: 1rem; margin-bottom: 1.5rem; outline: none; transition: var(--transition); }
+    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1); }
+    .view { display: none; animation: fadeIn 0.5s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    #view-home header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+    .script-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+    .script-card { cursor: pointer; padding: 2rem; position: relative; }
+    .script-card:hover { transform: scale(1.02); }
+    .delete-btn { position: absolute; top: 15px; right: 15px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: none; }
+    .script-card:hover .delete-btn { display: flex; justify-content: center; align-items: center; }
+    .line-item { display: flex; gap: 1.5rem; padding: 1.5rem; border-bottom: 1px solid #EEE; align-items: center; }
+    .line-role { font-weight: 700; min-width: 120px; color: var(--primary); }
+    .line-text { flex: 1; }
+    .line-actions { display: flex; gap: 0.5rem; align-items: center; }
+    #practice-container { text-align: center; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .current-line { font-size: 1.8rem; font-weight: 600; margin: 2rem 0; max-width: 800px; }
+    .progress-bar { width: 100%; height: 6px; background: #DEE2E6; border-radius: 3px; margin-bottom: 2rem; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+    .badge-user { background: #FFF3CD; color: #856404; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+    .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loader-overlay" id="loader"><div class="loader"></div></div>
+
+  <nav class="container">
+    <div style="display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="app.showView('home')">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <span style="font-weight: 800; font-size: 1.5rem; letter-spacing: -1px;">Rehearsal Room</span>
+    </div>
+  </nav>
+
+  <!-- HOME VIEW -->
+  <div id="view-home" class="view container">
+    <header>
+      <div>
+        <h1>マイライブラリ</h1>
+        <p style="color: var(--text-secondary);">端末に保存された台本一覧です。</p>
+      </div>
+      <button class="btn btn-primary" onclick="app.showView('import')"><span>+</span> 台本を追加</button>
+    </header>
+    <div class="script-grid" id="script-list"></div>
+  </div>
+
+  <!-- IMPORT VIEW -->
+  <div id="view-import" class="view container">
+    <div class="glass-card">
+      <button class="btn btn-secondary" onclick="app.showView('home')" style="margin-bottom: 2rem;">← 戻る</button>
+      <h2>台本をインポート</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">「役名: セリフ」の形式で入力してください。</p>
+      <input type="text" id="import-title" placeholder="台本のタイトル (例: ハムレット 第一幕)">
+      <textarea id="import-text" rows="15" placeholder="役名A: セリフ内容...&#10;役名B: セリフ内容..."></textarea>
+      <button class="btn btn-primary" onclick="app.importScript()">保存する</button>
+    </div>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <div id="view-setup" class="view container">
+    <div class="glass-card">
+      <button class="btn btn-secondary" onclick="app.showView('home')" style="margin-bottom: 2rem;">← 戻る</button>
+      <h2 id="setup-title">台本タイトル</h2>
+      
+      <div style="margin-bottom: 2rem; border-bottom: 2px solid #EEE; padding-bottom: 2rem;">
+        <h3>自分の役を選択</h3>
+        <select id="user-role-select"></select>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">※ 相手のセリフの音声は下のリストからアップロードまたは録音できます。</p>
+        <div style="margin-top: 1rem;">
+          <label>セリフ間の待機時間 (秒):</label>
+          <input type="number" id="interval-sec" value="1.0" step="0.1" style="width: 100px; margin-bottom: 0;">
+        </div>
+      </div>
+
+      <h3>セリフ一覧と音声設定</h3>
+      <div id="line-list-setup"></div>
+
+      <div style="margin-top: 3rem; text-align: center;">
+        <button class="btn btn-primary" style="padding: 1.2rem 3rem; font-size: 1.2rem;" onclick="app.startPractice()">
+          練習を始める →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRACTICE VIEW -->
+  <div id="view-practice" class="view container">
+    <div class="glass-card">
+      <div class="progress-bar"><div class="progress-fill" id="practice-progress"></div></div>
+      <div id="practice-container">
+        <div id="practice-status-badge"></div>
+        <div id="practice-role-name" style="font-weight: 700; color: var(--primary);"></div>
+        <div class="current-line" id="practice-line-text">ここにセリフが表示されます</div>
+        <div id="practice-controls" style="margin-top: 2rem;"></div>
+      </div>
+      <div style="text-align: center; margin-top: 2rem;">
+        <button class="btn btn-secondary" onclick="app.stopPractice()">練習を終了する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW VIEW -->
+  <div id="view-review" class="view container">
+    <div class="glass-card">
+      <h2>稽古の振り返り</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 2rem;">通しで再生して自分の録音を確認しましょう。</p>
+      <div id="review-list"></div>
+      <div style="margin-top: 3rem; text-align: center; display: flex; justify-content: center; gap: 1rem;">
+        <button class="btn btn-secondary" onclick="app.showView('setup')">配役設定へ戻る</button>
+        <button class="btn btn-primary" onclick="app.startReviewPlayback()">通しで再生</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- セキュリティ: XSS対策のためのエスケープ関数 ---
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/[&<>'"]/g, function(match) {
+        const escapeMap = {
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        };
+        return escapeMap[match];
+      });
+    }
+
+    // --- 1. IndexedDB Wrapper (ローカルデータベース) ---
+    const db = {
+      dbName: 'RehearsalRoomDB',
+      version: 1,
+      instance: null,
+      
+      init() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(this.dbName, this.version);
+          req.onupgradeneeded = (e) => {
+            const _db = e.target.result;
+            if (!_db.objectStoreNames.contains('scripts')) _db.createObjectStore('scripts', { keyPath: 'id' });
+            if (!_db.objectStoreNames.contains('audios')) _db.createObjectStore('audios', { keyPath: 'id' });
+          };
+          req.onsuccess = (e) => { this.instance = e.target.result; resolve(); };
+          req.onerror = () => reject(req.error);
+        });
+      },
+      getAllScripts() {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('scripts', 'readonly').objectStore('scripts').getAll();
+          req.onsuccess = () => resolve(req.result.sort((a,b) => b.createdAt - a.createdAt));
+          req.onerror = () => reject(req.error);
+        });
+      },
+      getScript(id) {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('scripts', 'readonly').objectStore('scripts').get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      },
+      saveScript(script) {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('scripts', 'readwrite').objectStore('scripts').put(script);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      },
+      deleteScript(id) {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('scripts', 'readwrite').objectStore('scripts').delete(id);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      },
+      saveAudio(id, blob) {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('audios', 'readwrite').objectStore('audios').put({ id, blob });
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      },
+      getAudioBlob(id) {
+        return new Promise((resolve, reject) => {
+          const req = this.instance.transaction('audios', 'readonly').objectStore('audios').get(id);
+          req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+          req.onerror = () => reject(req.error);
+        });
+      }
+    };
+
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    // --- 2. Application Logic ---
+    const app = {
+      state: {
+        currentView: 'home', scripts:[], currentScript: null,
+        userRole: '', practiceInterval: 1.0, practiceIndex: 0, recordedBlobs: {}
+      },
+
+      async init() {
+        await db.init();
+        this.showView('home');
+        this.loadScripts();
+      },
+
+      showView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-' + viewId).classList.add('active');
+        this.state.currentView = viewId;
+        window.scrollTo(0, 0);
+      },
+
+      setLoading(isLoading) { document.getElementById('loader').style.display = isLoading ? 'flex' : 'none'; },
+
+      async loadScripts() {
+        this.state.scripts = await db.getAllScripts();
+        this.renderScriptList();
+      },
+
+      renderScriptList() {
+        const container = document.getElementById('script-list');
+        const scripts = this.state.scripts;
+        container.innerHTML = scripts.length ? '' : '<p>台本がありません。新しく追加してください。</p>';
+        scripts.forEach(s => {
+          const card = document.createElement('div');
+          card.className = 'glass-card script-card';
+          card.onclick = (e) => { if(!e.target.closest('.delete-btn')) this.openScript(s.id); };
+          
+          // XSS対策: 表示時にエスケープ
+          card.innerHTML = `
+            <button class="delete-btn" onclick="app.deleteScript('${s.id}')">×</button>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary); margin-bottom: 1rem;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <h3>${escapeHTML(s.title)}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+              ${(s.roles ||[]).length}人の役 ・ ${new Date(s.createdAt).toLocaleDateString()}
+            </p>
+          `;
+          container.appendChild(card);
+        });
+      },
+
+      async deleteScript(id) {
+        if(confirm('この台本を削除しますか？紐づく音声も消去されます。')) {
+          await db.deleteScript(id);
+          this.loadScripts();
+        }
+      },
+
+      async importScript() {
+        const title = document.getElementById('import-title').value;
+        const text = document.getElementById('import-text').value;
+
+        if (!title || !text) return alert('タイトルとテキストを入力してください。');
+
+        const lines = text.split('\n').filter(l => l.trim()).map((line) => {
+          const match = line.match(/^([^:：]+)[:：](.*)$/);
+          if (match) return { role: match[1].trim(), text: match[2].trim() };
+          return { role: '?', text: line.trim() };
+        });
+
+        const roles = Array.from(new Set(lines.map(l => l.role)));
+        const newScript = { id: generateUUID(), title, roles, lines, createdAt: Date.now() };
+
+        this.setLoading(true);
+        await db.saveScript(newScript);
+        this.setLoading(false);
+
+        document.getElementById('import-title').value = '';
+        document.getElementById('import-text').value = '';
+        this.loadScripts();
+        this.showView('home');
+      },
+
+      async openScript(id) {
+        this.setLoading(true);
+        const script = await db.getScript(id);
+        
+        for (let i = 0; i < script.lines.length; i++) {
+          if (script.lines[i].audioId) {
+            const blob = await db.getAudioBlob(script.lines[i].audioId);
+            if (blob) script.lines[i].audioUrl = URL.createObjectURL(blob);
+          }
+        }
+        
+        this.state.currentScript = script;
+        this.setLoading(false);
+        this.renderSetup();
+        this.showView('setup');
+      },
+
+      renderSetup() {
+        const script = this.state.currentScript;
+        // XSS対策: 表示時にエスケープ
+        document.getElementById('setup-title').innerText = script.title; // innerTextは自動で安全になるが念の為
+        const sel = document.getElementById('user-role-select');
+        sel.innerHTML = script.roles.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
+        this.renderLineListSetup();
+      },
+
+      renderLineListSetup() {
+        const container = document.getElementById('line-list-setup');
+        container.innerHTML = '';
+        this.state.currentScript.lines.forEach((l, idx) => {
+          const div = document.createElement('div');
+          div.className = 'line-item';
+          // XSS対策: roleとtextをエスケープ
+          div.innerHTML = `
+            <div class="line-role">${escapeHTML(l.role)}</div>
+            <div class="line-text">${escapeHTML(l.text)}</div>
+            <div class="line-actions" id="actions-${idx}">
+              ${l.audioUrl ? '<span style="color: #28A745; font-size: 0.8rem; font-weight:bold;">♪ 音声あり</span>' : ''}
+              <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="app.recordLineSetup(${idx})">録音</button>
+              <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="document.getElementById('upload-${idx}').click()">アップロード</button>
+              <input type="file" id="upload-${idx}" style="display:none" accept="audio/*" onchange="app.uploadLineSetup(${idx}, this)">
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      },
+
+      recordLineSetup(idx) {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+          const btn = document.querySelector(`#actions-${idx} button`);
+          const recorder = new MediaRecorder(stream);
+          let chunks =[];
+          
+          recorder.ondataavailable = e => chunks.push(e.data);
+          recorder.onstop = async () => {
+            btn.innerText = '保存中...';
+            btn.disabled = true;
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            await this.saveAudioData(idx, blob);
+            stream.getTracks().forEach(t => t.stop());
+            this.renderLineListSetup();
+          };
+          
+          btn.innerText = '停止 (録音中)';
+          btn.classList.add('btn-primary');
+          btn.onclick = () => recorder.stop();
+          recorder.start();
+        }).catch(err => alert('マイクの許可が必要です。\n' + err.message));
+      },
+
+      async uploadLineSetup(idx, input) {
+        const file = input.files[0];
+        if (!file) return;
+        await this.saveAudioData(idx, file);
+        this.renderLineListSetup();
+      },
+
+      async saveAudioData(idx, blobOrFile) {
+        const audioId = `${this.state.currentScript.id}_${idx}`;
+        await db.saveAudio(audioId, blobOrFile);
+        this.state.currentScript.lines[idx].audioId = audioId;
+        this.state.currentScript.lines[idx].audioUrl = URL.createObjectURL(blobOrFile);
+        await db.saveScript(this.state.currentScript);
+      },
+
+      async startPractice() {
+        this.state.userRole = document.getElementById('user-role-select').value;
+        this.state.practiceInterval = parseFloat(document.getElementById('interval-sec').value) || 1.0;
+        this.state.practiceIndex = 0;
+        this.state.recordedBlobs = {};
+        this.showView('practice');
+        this.nextPracticeStep();
+      },
+
+      async nextPracticeStep() {
+        if (this.state.practiceIndex >= this.state.currentScript.lines.length) {
+          return this.finishPractice();
+        }
+
+        const idx = this.state.practiceIndex;
+        const line = this.state.currentScript.lines[idx];
+        const isMyTurn = (line.role === this.state.userRole);
+
+        document.getElementById('practice-progress').style.width = ((idx / this.state.currentScript.lines.length) * 100) + '%';
+        
+        // innerTextを使っているのでエスケープ不要だが、念のため安全なプロパティ代入
+        document.getElementById('practice-role-name').innerText = line.role;
+        document.getElementById('practice-line-text').innerText = line.text;
+        
+        document.getElementById('practice-status-badge').innerHTML = isMyTurn ? '<span class="badge-user">あなたの番です</span>' : '<span style="color:var(--text-secondary)">音声待機・再生中...</span>';
+        
+        const controls = document.getElementById('practice-controls');
+        controls.innerHTML = '';
+
+        if (isMyTurn) {
+          const nextBtn = document.createElement('button');
+          nextBtn.className = 'btn btn-primary';
+          nextBtn.innerText = '開始して読む (録音開始)';
+          controls.appendChild(nextBtn);
+
+          let recorder, stream;
+
+          nextBtn.onclick = () => {
+            if (nextBtn.innerText.includes('読み終わりました')) {
+              if (recorder) recorder.stop();
+              return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+              stream = s;
+              recorder = new MediaRecorder(stream);
+              let chunks =[];
+              recorder.ondataavailable = e => chunks.push(e.data);
+              recorder.onstop = () => {
+                this.state.recordedBlobs[idx] = new Blob(chunks, { type: 'audio/webm' });
+                stream.getTracks().forEach(t => t.stop());
+                this.state.practiceIndex++;
+                setTimeout(() => this.nextPracticeStep(), this.state.practiceInterval * 1000);
+              };
+              recorder.start();
+              nextBtn.innerText = '読み終わりました (次へ)';
+              nextBtn.style.backgroundColor = '#28A745';
+            }).catch(e => {
+              alert('マイクが使えません。スキップします。');
+              this.state.practiceIndex++;
+              this.nextPracticeStep();
+            });
+          };
+        } else {
+          if (line.audioUrl) {
+            const audio = new Audio(line.audioUrl);
+            audio.onended = () => {
+              this.state.practiceIndex++;
+              setTimeout(() => this.nextPracticeStep(), this.state.practiceInterval * 1000);
+            };
+            audio.play().catch(() => { this.state.practiceIndex++; this.nextPracticeStep(); });
+          } else {
+            const waitTime = Math.max(1000, this.state.practiceInterval * 2000);
+            setTimeout(() => { this.state.practiceIndex++; this.nextPracticeStep(); }, waitTime);
+          }
+        }
+      },
+
+      finishPractice() {
+        alert('稽古が完了しました！');
+        this.renderReview();
+        this.showView('review');
+      },
+
+      stopPractice() {
+        if (confirm('練習を中止しますか？')) this.showView('setup');
+      },
+
+      renderReview() {
+        const container = document.getElementById('review-list');
+        container.innerHTML = '';
+        this.state.currentScript.lines.forEach((l, idx) => {
+          const isMe = (l.role === this.state.userRole);
+          const hasRecord = isMe ? this.state.recordedBlobs[idx] : l.audioUrl;
+          
+          const div = document.createElement('div');
+          div.className = 'line-item';
+          div.style.background = isMe ? 'rgba(255, 107, 53, 0.05)' : 'transparent';
+          // XSS対策: roleとtextをエスケープ
+          div.innerHTML = `
+            <div class="line-role">${escapeHTML(l.role)} ${isMe ? '(自分)' : ''}</div>
+            <div class="line-text">${escapeHTML(l.text)}</div>
+            <div class="line-actions">
+              ${hasRecord ? '<button class="btn btn-secondary" onclick="app.playReviewLine('+idx+')">▶</button>' : '<span style="color:#CCC">音声なし</span>'}
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      },
+
+      playReviewLine(idx) {
+        const isMe = (this.state.currentScript.lines[idx].role === this.state.userRole);
+        let audio;
+        if (isMe) {
+          const blob = this.state.recordedBlobs[idx];
+          if (!blob) return;
+          audio = new Audio(URL.createObjectURL(blob));
+        } else {
+          const url = this.state.currentScript.lines[idx].audioUrl;
+          if (!url) return;
+          audio = new Audio(url);
+        }
+        audio.play();
+      },
+
+      async startReviewPlayback() {
+        for (let i = 0; i < this.state.currentScript.lines.length; i++) {
+          await new Promise(resolve => {
+            const isMe = (this.state.currentScript.lines[i].role === this.state.userRole);
+            let audio;
+            if (isMe) {
+              const blob = this.state.recordedBlobs[i];
+              if (!blob) return resolve();
+              audio = new Audio(URL.createObjectURL(blob));
+            } else {
+              const url = this.state.currentScript.lines[i].audioUrl;
+              if (!url) return resolve();
+              audio = new Audio(url);
+            }
+            audio.onended = resolve;
+            audio.play();
+          });
+          await new Promise(resolve => setTimeout(resolve, this.state.practiceInterval * 1000));
+        }
+      }
+    };
+
+    window.onload = () => app.init();
+  </script>
+</body>
+</html>
